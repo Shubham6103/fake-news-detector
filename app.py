@@ -1,26 +1,31 @@
 import streamlit as st
-import pickle
+from transformers import pipeline
 
-# Load model and vectorizer
-model = pickle.load(open("model.pkl", "rb"))
-vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
+# Load BERT fake news classifier
+@st.cache_resource
+def load_model():
+    return pipeline("text-classification", model="mrm8488/bert-tiny-finetuned-fake-news")
 
-# App interface
-st.title("📰 Fake News Detector")
-st.write("Enter a news article below, and the AI will tell you if it's real or fake.")
+model = load_model()
 
-# User input
-news = st.text_area("Enter News Article Text Here")
+# UI
+st.title("🧠 BERT Fake News Detector")
+st.write("Enter a news article or headline to check if it's real or fake using a pretrained BERT model.")
 
-if st.button("Check"):
+# Input
+news = st.text_area("Paste News Text Here:")
+
+# Predict
+if st.button("Analyze"):
     if news.strip() == "":
-        st.warning("Please enter some text.")
+        st.warning("Please enter some text to analyze.")
     else:
-        # Transform and predict
-        vect_text = vectorizer.transform([news])
-        prediction = model.predict(vect_text)
+        with st.spinner("Analyzing with BERT..."):
+            prediction = model(news)[0]
+            label = prediction['label']
+            score = prediction['score']
 
-        if prediction[0] == 1:
-            st.success("✅ This looks like Real News.")
-        else:
-            st.error("🚫 Warning: This might be Fake News.")
+            if label == 'REAL':
+                st.success(f"✅ This appears to be REAL news (confidence: {score:.2%})")
+            else:
+                st.error(f"🚫 This may be FAKE news (confidence: {score:.2%})")
